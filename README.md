@@ -75,7 +75,7 @@ docker build -t paypal-mcp-server .
 docker run -p 3000:3000 --env-file .env paypal-mcp-server
 ```
 
-Este proyecto vive en el repo público [`Horizon-CX/paypal-sandbox-mcp-server`](https://github.com/Horizon-CX/paypal-sandbox-mcp-server) — puedes conectarlo directamente desde Render/Railway como origen de despliegue continuo.
+Este proyecto vive en el repo público [`Horizon-CX/PayPal-Sandbox-MCP-Server`](https://github.com/Horizon-CX/PayPal-Sandbox-MCP-Server) — puedes conectarlo directamente desde Render/Railway como origen de despliegue continuo.
 
 ## 8. Variables de entorno en el hosting
 

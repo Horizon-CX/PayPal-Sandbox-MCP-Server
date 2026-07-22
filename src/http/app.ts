@@ -65,7 +65,13 @@ export function createApp(deps: CreateAppDeps): Express {
         publicBaseUrl: deps.publicBaseUrl,
         logger: deps.logger
       });
-      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+      // enableJsonResponse: el servidor responde JSON directo en vez de exigir SSE
+      // (text/event-stream). Necesario para clientes como el planner de Agentforce,
+      // que no negocian SSE y fallaban con "Not Acceptable: Client must accept text/event-stream".
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true
+      });
 
       res.on('close', () => {
         void transport.close();

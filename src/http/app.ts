@@ -32,6 +32,30 @@ function hasJsonContentType(req: Request): boolean {
   return typeof contentType === 'string' && contentType.includes('application/json');
 }
 
+const REQUIRED_MCP_ACCEPT = 'application/json, text/event-stream';
+
+function normalizeAcceptHeader(req: Request): void {
+  const raw = req.rawHeaders;
+  let found = false;
+  for (let i = 0; i < raw.length; i += 2) {
+    const key = raw[i];
+    const value = raw[i + 1];
+    if (key === undefined || value === undefined) {
+      continue;
+    }
+    if (key.toLowerCase() === 'accept') {
+      if (!value.includes('application/json') || !value.includes('text/event-stream')) {
+        raw[i + 1] = REQUIRED_MCP_ACCEPT;
+      }
+      found = true;
+    }
+  }
+  if (!found) {
+    raw.push('Accept', REQUIRED_MCP_ACCEPT);
+  }
+  req.headers.accept = REQUIRED_MCP_ACCEPT;
+}
+
 export function createApp(deps: CreateAppDeps): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -58,6 +82,14 @@ export function createApp(deps: CreateAppDeps): Express {
         return;
       }
 
+      // El SDK exige, sin excepcion, que el header Accept incluya tanto application/json
+      // como text/event-stream en cada POST (ver handlePostRequest en el SDK); clientes
+      // que no negocian SSE (como el planner de Agentforce) no lo mandan y reciben 406
+      // antes de que el handshake MCP llegue a empezar. @hono/node-server (usado por el
+      // transporte para convertir la request de Node a Web Standard) construye los headers
+      // a partir de req.rawHeaders, no de req.headers, asi que hay que normalizar ahi.
+      normalizeAcceptHeader(req);
+
       // Stateless mode: a fresh server + transport pair per request, as recommended by the MCP SDK
       // for deployments with no shared session state between requests.
       const server = createMcpServer({
@@ -65,9 +97,8 @@ export function createApp(deps: CreateAppDeps): Express {
         publicBaseUrl: deps.publicBaseUrl,
         logger: deps.logger
       });
-      // enableJsonResponse: el servidor responde JSON directo en vez de exigir SSE
-      // (text/event-stream). Necesario para clientes como el planner de Agentforce,
-      // que no negocian SSE y fallaban con "Not Acceptable: Client must accept text/event-stream".
+      // enableJsonResponse: la respuesta real es un JSON plano (no un stream SSE), que es
+      // lo que un cliente HTTP simple como el de Salesforce necesita para parsear el resultado.
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
         enableJsonResponse: true
